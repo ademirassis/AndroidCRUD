@@ -1,5 +1,6 @@
 package up.edu.br.androidcrud;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
@@ -17,6 +18,7 @@ import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Spinner;
 
@@ -26,6 +28,32 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        //verifica se começou agora ou se veio de uma edição
+        Intent intent = getIntent();
+        if(intent.hasExtra("cliente")){
+            findViewById(R.id.includemain).setVisibility(View.INVISIBLE);
+            findViewById(R.id.includecadastro).setVisibility(View.VISIBLE);
+            findViewById(R.id.fab).setVisibility(View.INVISIBLE);
+            clienteEditado = (Cliente) intent.getSerializableExtra("cliente");
+            EditText txtNome = (EditText)findViewById(R.id.edtNome);
+            Spinner spnEstado = (Spinner)findViewById(R.id.spnEstado);
+            CheckBox chkVip = (CheckBox)findViewById(R.id.chkVip);
+
+            txtNome.setText(clienteEditado.getNome());
+            chkVip.setChecked(clienteEditado.getVip());
+            spnEstado.setSelection(getIndex(spnEstado, clienteEditado.getUf()));
+            if(clienteEditado.getSexo() != null){
+                RadioButton rb;
+                if(clienteEditado.getSexo().equals("M"))
+                    rb = (RadioButton)findViewById(R.id.rbMasculino);
+                else
+                    rb = (RadioButton)findViewById(R.id.rbFeminino);
+                rb.setChecked(true);
+            }
+        }
+
+
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
@@ -67,10 +95,18 @@ public class MainActivity extends AppCompatActivity {
 
                         //salvando os dados
                         ClienteDAO dao = new ClienteDAO(getBaseContext());
-                        boolean sucesso = dao.salvar(nome, sexo, uf, vip);
+                        boolean sucesso;
+                        if(clienteEditado != null)
+                            sucesso = dao.salvar(clienteEditado.getId(), nome, sexo, uf, vip);
+                        else
+                            sucesso = dao.salvar(nome, sexo, uf, vip);
                         if(sucesso) {
                             Cliente cliente = dao.retornarUltimo();
-                            adapter.adicionarCliente(cliente);
+                            if(clienteEditado != null){
+                                adapter.atualizarCliente(cliente);
+                                clienteEditado = null;
+                            }else
+                                adapter.adicionarCliente(cliente);
 
                             //limpa os campos
                             txtNome.setText("");
@@ -87,12 +123,28 @@ public class MainActivity extends AppCompatActivity {
                             Snackbar.make(view, "Erro ao salvar, consulte os logs!", Snackbar.LENGTH_LONG)
                                     .setAction("Action", null).show();
                         }
+
+
+
                     }
                 });
             }
 
         });
         configurarRecycler();
+    }
+
+    Cliente clienteEditado = null;
+    private int getIndex(Spinner spinner, String myString)
+    {
+        int index = 0;
+        for (int i=0;i<spinner.getCount();i++){
+            if (spinner.getItemAtPosition(i).toString().equalsIgnoreCase(myString)){
+                index = i;
+                break;
+            }
+        }
+        return index;
     }
 
 
